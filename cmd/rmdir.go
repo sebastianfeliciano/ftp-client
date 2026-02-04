@@ -11,14 +11,14 @@ var rmdirCmd = &cobra.Command{
 	Short: "Delete a directory on the FTP server",
 	Long:  `Delete the directory on the FTP server at the given URL.`,
 	Args:  cobra.ExactArgs(1),
-	RunE:  runRmdir,
+	RunE:  rmdirCommand,
 }
 
 func init() {
 	rootCmd.AddCommand(rmdirCmd)
 }
 
-func runRmdir(cmd *cobra.Command, args []string) error {
+func rmdirCommand(cmd *cobra.Command, args []string) error {
 	parsed, err := ftp.ParseURL(args[0])
 	if err != nil {
 		return err

@@ -16,7 +16,7 @@ var cpCmd = &cobra.Command{
 	Long: `Copy the file given by ARG1 to the file given by ARG2.
 If ARG1 is a local file, then ARG2 must be a URL, and vice-versa.`,
 	Args: cobra.ExactArgs(2),
-	RunE: runCp,
+	RunE: cpCommand,
 }
 
 func init() {
@@ -25,9 +25,10 @@ func init() {
 
 func isFTPURL(s string) bool { return strings.HasPrefix(s, "ftp://") }
 
-func runCp(cmd *cobra.Command, args []string) error {
+func cpCommand(cmd *cobra.Command, args []string) error {
 	src, dst := args[0], args[1]
 	srcURL, dstURL := isFTPURL(src), isFTPURL(dst)
+	// Urls should not be the same, or else it isnt copying anything.
 	if srcURL == dstURL {
 		return fmt.Errorf("one argument must be a local path and the other an ftp:// URL")
 	}
@@ -45,14 +46,17 @@ func runCp(cmd *cobra.Command, args []string) error {
 		if err := client.Login(parsed.User, parsed.Password); err != nil {
 			return err
 		}
+		// Set the transfer mode to binary.
 		if err := client.SetTransferMode(); err != nil {
 			return err
 		}
+		// Create the destination file.
 		f, err := os.Create(dst)
 		if err != nil {
 			return err
 		}
 		defer f.Close()
+		// Download the file from the FTP server to the local file.
 		return client.Retr(parsed.Path, f)
 	}
 	// STOR from local to FTP
@@ -60,6 +64,7 @@ func runCp(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// Open the source file.
 	f, err := os.Open(src)
 	if err != nil {
 		return err
@@ -73,8 +78,10 @@ func runCp(cmd *cobra.Command, args []string) error {
 	if err := client.Login(parsed.User, parsed.Password); err != nil {
 		return err
 	}
+	// Set the transfer mode to binary.
 	if err := client.SetTransferMode(); err != nil {
 		return err
 	}
+	// Upload the file from the local file to the FTP server.
 	return client.Stor(parsed.Path, f)
 }

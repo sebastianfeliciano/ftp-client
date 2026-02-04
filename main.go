@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+// Execute the root command..
 func main() {
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

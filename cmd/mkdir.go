@@ -11,14 +11,14 @@ var mkdirCmd = &cobra.Command{
 	Short: "Create a directory on the FTP server",
 	Long:  `Create a new directory on the FTP server at the given URL.`,
 	Args:  cobra.ExactArgs(1),
-	RunE:  runMkdir,
+	RunE:  mkdirCommand,
 }
 
 func init() {
 	rootCmd.AddCommand(mkdirCmd)
 }
 
-func runMkdir(cmd *cobra.Command, args []string) error {
+func mkdirCommand(cmd *cobra.Command, args []string) error {
 	parsed, err := ftp.ParseURL(args[0])
 	if err != nil {
 		return err

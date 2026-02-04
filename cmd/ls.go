@@ -13,14 +13,14 @@ var lsCmd = &cobra.Command{
 	Short: "List current directory on the FTP server",
 	Long:  `Print the directory listing from the FTP server at the given URL.`,
 	Args:  cobra.ExactArgs(1),
-	RunE:  runLs,
+	RunE:  lsCommand,
 }
 
 func init() {
 	rootCmd.AddCommand(lsCmd)
 }
 
-func runLs(cmd *cobra.Command, args []string) error {
+func lsCommand(cmd *cobra.Command, args []string) error {
 	parsed, err := ftp.ParseURL(args[0])
 	if err != nil {
 		return err

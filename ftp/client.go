@@ -17,7 +17,7 @@ type Client struct {
 	verbose bool
 }
 
-// Response holds an FTP server response (code and message).
+// Response holds an FTP server response.
 type Response struct {
 	Code    int
 	Message string
@@ -26,7 +26,9 @@ type Response struct {
 // NewClient connects to the FTP server and reads the hello message.
 // Caller must call Quit() when done.
 func NewClient(host string, port int, verbose bool) (*Client, error) {
+
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	// Dial the server and create a new client.
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
@@ -35,6 +37,7 @@ func NewClient(host string, port int, verbose bool) (*Client, error) {
 	c := &Client{control: conn, reader: reader, verbose: verbose}
 	// Must read server hello before sending any command.
 	_, err = c.readResponse()
+	// If there is an error, close the connection.
 	if err != nil {
 		conn.Close()
 		return nil, fmt.Errorf("read hello: %w", err)
@@ -66,25 +69,27 @@ func (c *Client) readResponse() (*Response, error) {
 	if len(line) < 4 {
 		return nil, fmt.Errorf("invalid response: %q", line)
 	}
+	// Convert the first 3 characters to an integer.
 	code, err := strconv.Atoi(line[:3])
 	if err != nil {
 		return nil, fmt.Errorf("invalid response code: %q", line[:3])
 	}
 	msg := ""
+	// If there is more than 4 characters, trim the space and assign the rest to the message.
 	if len(line) > 4 {
 		msg = strings.TrimSpace(line[4:])
 	}
+	// Track the response code and message.
 	return &Response{Code: code, Message: msg}, nil
 }
 
-// readResponseMultiline reads a response that may have multiple lines (e.g. LIST).
-// First line is code; following lines until "CODE message" or "CODE message." are continuation.
+// readResponseMultiline reads a response that may have multiple lines.
 func (c *Client) readResponseMultiline() (*Response, error) {
 	first, err := c.readResponse()
 	if err != nil {
 		return nil, err
 	}
-	// 1xx, 2xx, 3xx with hyphen after code (e.g. "150-") indicate multiline
+	// If the response code is between 100 and 399 and the message is not empty and the first character is a hyphen, read multiple lines.
 	if first.Code >= 100 && first.Code < 400 && len(first.Message) > 0 && first.Message[0] == '-' {
 		for {
 			line, err := c.reader.ReadString('\n')
@@ -96,6 +101,7 @@ func (c *Client) readResponseMultiline() (*Response, error) {
 			if c.verbose {
 				fmt.Println("< " + line)
 			}
+			// If the line is at least 4 characters long, the third character is a space and the first 3 characters are the response code, return the response.
 			if len(line) >= 4 && line[3] == ' ' && line[:3] == strconv.Itoa(first.Code) {
 				msg := ""
 				if len(line) > 4 {
@@ -117,10 +123,11 @@ func (c *Client) Login(user, password string) error {
 	if err != nil {
 		return err
 	}
-	// 230 = already logged in; 331 = need password
+	// 230 = already logged in.
 	if resp.Code == 230 {
 		return nil
 	}
+	// If the response code is 331, send the password.
 	if resp.Code == 331 {
 		if err := c.send("PASS %s", password); err != nil {
 			return err
@@ -146,6 +153,7 @@ func (c *Client) SetTransferMode() error {
 		if err != nil {
 			return err
 		}
+		// If the response code is not 200 or 250, return an error.
 		if resp.Code != 200 && resp.Code != 250 {
 			return fmt.Errorf("%s: %d %s", cmd, resp.Code, resp.Message)
 		}
@@ -153,7 +161,8 @@ func (c *Client) SetTransferMode() error {
 	return nil
 }
 
-// pasvResponse matches "227 Entering Passive Mode (h1,h2,h3,h4,p1,p2)."
+// pasvResponse is expected to follow the FTP PASV reply format:
+// "227 Entering Passive Mode (h1,h2,h3,h4,p1,p2)."
 var pasvRE = regexp.MustCompile(`\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)`)
 
 // openDataChannel sends PASV, parses the response, and opens a TCP connection to the data port.
@@ -172,13 +181,17 @@ func (c *Client) openDataChannel() (net.Conn, error) {
 	if matches == nil {
 		return nil, fmt.Errorf("could not parse PASV response: %s", resp.Message)
 	}
+	// Parse the matches into 6 integers.
 	var nums [6]int
 	for i := 1; i <= 6; i++ {
 		nums[i-1], _ = strconv.Atoi(matches[i])
 	}
+	// Format the host and port.
 	host := fmt.Sprintf("%d.%d.%d.%d", nums[0], nums[1], nums[2], nums[3])
+	// Convert the port to an integer.
 	port := nums[4]<<8 + nums[5]
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	// Dial the data channel.
 	dataConn, err := net.Dial("tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("connect data channel: %w", err)
@@ -227,6 +240,7 @@ func (c *Client) Delete(path string) error {
 	if err != nil {
 		return err
 	}
+	// If the response code is not 250, return an error.
 	if resp.Code != 250 {
 		return fmt.Errorf("DELE: %d %s", resp.Code, resp.Message)
 	}
@@ -326,7 +340,7 @@ func (c *Client) Stor(path string, r io.Reader) error {
 	return nil
 }
 
-// Quit sends QUIT and closes the control connection.
+// Quit sends QUIT and closes the  connection.
 func (c *Client) Quit() error {
 	_ = c.send("QUIT")
 	return c.control.Close()

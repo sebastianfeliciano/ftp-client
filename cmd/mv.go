@@ -14,14 +14,14 @@ var mvCmd = &cobra.Command{
 	Long: `Move the file given by ARG1 to the file given by ARG2.
 If ARG1 is a local file, then ARG2 must be a URL, and vice-versa.`,
 	Args: cobra.ExactArgs(2),
-	RunE: runMv,
+	RunE: mvCommand,
 }
 
 func init() {
 	rootCmd.AddCommand(mvCmd)
 }
 
-func runMv(cmd *cobra.Command, args []string) error {
+func mvCommand(cmd *cobra.Command, args []string) error {
 	src, dst := args[0], args[1]
 	srcURL, dstURL := isFTPURL(src), isFTPURL(dst)
 	if srcURL == dstURL {

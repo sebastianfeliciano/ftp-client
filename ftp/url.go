@@ -17,7 +17,7 @@ type FTPURL struct {
 	Path     string
 }
 
-// DefaultFTPPort is the default FTP control channel port.
+// DefaultFTPPort is the default FTP control  port.
 const DefaultFTPPort = 21
 
 // ParseURL parses an FTP URL string into FTPURL.
@@ -29,12 +29,14 @@ func ParseURL(raw string) (*FTPURL, error) {
 		return nil, fmt.Errorf("parse url: %w", err)
 	}
 	if u.Scheme != "ftp" {
-		return nil, fmt.Errorf("unsupported scheme: %s (expected ftp)", u.Scheme)
+		return nil, fmt.Errorf("unsupported: %s (expected ftp)", u.Scheme)
 	}
+	// We have to get the host.
 	host := u.Hostname()
 	if host == "" {
 		return nil, fmt.Errorf("missing host in URL")
 	}
+
 	port := DefaultFTPPort
 	if p := u.Port(); p != "" {
 		port, err = strconv.Atoi(p)
@@ -42,6 +44,7 @@ func ParseURL(raw string) (*FTPURL, error) {
 			return nil, fmt.Errorf("invalid port: %s", p)
 		}
 	}
+	// Default user is "anonymous" with no password.
 	user := "anonymous"
 	password := ""
 	if u.User != nil {
